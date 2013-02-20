@@ -266,12 +266,18 @@ IMNotify.renderers.notifyButton = function(element) {
 
 IMNotify.renderers.count = function(element) {
 	if (this.config.get('debug')) this.log({message: 'count renderer - executing'});
-	if (this.get('last_read_count_local') === undefined || this.get('last_read_count_server') === undefined) return;
-	var currentCount = this.get('stream_count') - this.get('last_read_count_local');
-	if (currentCount > 0) this.view.get('notifyButton').addClass(this.cssPrefix + 'notifyButtonLit');
-	else {
+	var currentCount = undefined;
+	if (this.get('last_read_count_local') == undefined || this.get('last_read_count_server') == undefined) {
 		currentCount = 0;
 		this.view.get('notifyButton').removeClass(this.cssPrefix + 'notifyButtonLit');
+	}
+	else {
+		currentCount = this.get('stream_count') - this.get('last_read_count_local');
+		if (currentCount > 0) this.view.get('notifyButton').addClass(this.cssPrefix + 'notifyButtonLit');
+		else {
+			currentCount = 0;
+			this.view.get('notifyButton').removeClass(this.cssPrefix + 'notifyButtonLit');
+		}
 	}
 	element.text(currentCount);
 	if (this.config.get('debug')) this.log({message: 'count renderer - successful'});

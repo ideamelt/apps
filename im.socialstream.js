@@ -46,7 +46,8 @@ IMStream.config = {
 	userUrls: null,
 	aggregator: true,
 	compact: false,
-	personalize: true
+	personalize: true,
+	personalizeUrl: false
 };
  
 IMStream.templates.imStream = '<div class="{class:imstream}"></div>';
@@ -220,14 +221,15 @@ IMStream.methods.getElement = function(className, name) {
 };
 
 IMStream.methods.getNewsfeed = function() {
-	if (!Echo.UserSession.is('logged')) {
+	if (!Echo.UserSession.is('logged') && !this.config.get('personalizeUrl')) {
 		this.render();
 		return false;
 	}
 
 	var self = this;
 	var key = this.config.get('imAppkey');
-	var identity = Echo.UserSession.get('identityUrl');
+	if(this.config.get('personalizeUrl')) var identity = this.config.get('personalizeUrl');
+	else var identity = Echo.UserSession.get('identityUrl');
 	var opts = {api_key: key, user_url: identity};
 	var url = 'http://api.ideamelt.com/v1/user/followees/';
 	$.getJSON(url, opts, function(result) {
@@ -478,7 +480,7 @@ plugin.renderers.wrapper =function(element) {
 	itemImage.css({'width': size, 'height': size});
 
 	//story components
-	var story_actor = '<a class="echo-linkColor" target="_blank" style="font-weight:bold;" href="' + this.component.data.actor.id + '">'+ this.component.data.actor.title + '</a>';
+	var story_actor = '<a class="echo-linkColor imstoryactor" target="_blank" style="font-weight:bold;" href="' + this.component.data.actor.id + '">'+ this.component.data.actor.title + '</a>';
 	var story_action = myObject.action['action-singular'];
 	var story_object = myObject.object['object-determiner'] + ' <a class="echo-linkColor" target="_blank" href="' + myObject.meta.url + '">' + myObject.object['object-singular'] + '.</a>';
 
@@ -494,7 +496,7 @@ plugin.renderers.wrapper =function(element) {
 		var orig_agg = agg_users;
 		agg_users = $.map(agg_users, function(r) {return r.title});
 		var users_tooltip = agg_users.join(', ');
-		multiple_users = num > 1 ? 'and <span rel="tooltip" title="'+ users_tooltip +'" class="im-multiple echo-linkColor">' + num + ' other people</span> ' : 'and <a class="echo-linkColor" target="_blank" style="font-weight:bold;" href="' + orig_agg[0].id + '">'+ orig_agg[0].title + '</a> ';
+		multiple_users = num > 1 ? 'and <span rel="tooltip" title="'+ users_tooltip +'" class="im-multiple echo-linkColor">' + num + ' other people</span> ' : 'and <a class="echo-linkColor imstoryactor" target="_blank" style="font-weight:bold;" href="' + orig_agg[0].id + '">'+ orig_agg[0].title + '</a> ';
 		story_action = myObject.action['action-plural'];
 	};
 

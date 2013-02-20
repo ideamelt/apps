@@ -1,3 +1,5 @@
+(function() {
+
 var IdeaMelt = window.IdeaMelt || {};
 
 IdeaMelt.init = function(config) {
@@ -32,40 +34,53 @@ IdeaMelt.init = function(config) {
 
 
 
+IdeaMelt.messageLog = {
+	'info' : [],
+	'error' : []
+};
+
 IdeaMelt.baseUrl = 'http://api.ideamelt.com/v1/';
 
-IdeaMelt.error = function(message) {
+IdeaMelt.log = function(type, message) {
+	this.messageLog[type].push(message);
 	console.log(message);
-	return false;
+	if(type === 'error') return false;
 }
 
 IdeaMelt.listEndPoints = function() {
+	var endpoints = [];
 	$.each(this.EndPoints, function(i) {
-		console.log(i);
+		endpoints.push(i);
 	});
+	this.log('info', endpoints);
 }
 
 IdeaMelt.listEndPointParameters = function(endpoint) {
-	console.log('required paramters: ' + this.EndPoints[endpoint].required);
+	var required = this.EndPoints[endpoint].required;
+	var message = {
+		'required' : required
+	}
 	if (this.EndPoints[endpoint].optional) {
-		console.log('optional paramters: ' + this.EndPoints[endpoint].optional);
-	};
+		var optional = this.EndPoints[endpoint].optional;
+		message['optional'] = optional;
+	}
+	this.log('info', message)
 }
 
 IdeaMelt.checkRequest = function(endpoint, options) {
-	if (!endpoint) return this.error('no endpoint given');
-	if (!this.EndPoints[endpoint]) return this.error('not a valid endpoint')
-	if (!options) return this.error('no options given');
+	if (!endpoint) return this.log('error', 'no endpoint given');
+	if (!this.EndPoints[endpoint]) return this.log('error', 'not a valid endpoint')
+	if (!options) return this.log('error', 'no options given');
 	var required = this.EndPoints[endpoint].required;
 	var complete = true;
 	$.each(required, function(i) {
 		if(!options[required[i]]) complete = false;
 	});
-	if (!complete) return this.error('[' + required + '] are required fields')
+	if (!complete) return this.log('error', '[' + required + '] are required fields')
 	if (this.EndPoints[endpoint].optional) {
 		var optional = this.EndPoints[endpoint].optional;
-		if (options[optional[0]] && options[optional[1]]) return this.error('only one of [' + optional + '] are allowed');
-		if (!options[optional[0]] && !options[optional[1]]) return this.error('atleast one of [' + optional + '] are required');
+		if (options[optional[0]] && options[optional[1]]) return this.log('error', 'only one of [' + optional + '] are allowed');
+		if (!options[optional[0]] && !options[optional[1]]) return this.log('error', 'atleast one of [' + optional + '] are required');
 	}
 	return true;
 }
@@ -85,8 +100,8 @@ IdeaMelt.send = function(endpoint, options, success, fail) {
 		dataType: 'json',
 		data: data,
 		success: function(result) {
-			if (result.success && pass) success(result);
-			if (!result.success && fail) success(result);
+			if (result.success && success) success(result);
+			if (!result.success && fail) fail(result);
 		},
 		error: function(result) {
 			if (fail) fail(result);
@@ -117,7 +132,7 @@ IdeaMelt.EndPoints = {
 	UserExists: {
 		url: 'user/exists/',
 		method: 'GET',
-		required: ['user_url', 'title', 'avatar']},
+		required: ['user_url']},
 	
 	UserFollowers: {
 		url: 'user/followers/',
@@ -143,4 +158,16 @@ IdeaMelt.EndPoints = {
 		url: 'user/is_following_object/',
 		method: 'GET',
 		required: ['user_url', 'object_url']},
+
+	NotificationsSend: {
+		url: 'notifications/send',
+		method: 'POST',
+		required: ['to_user_url', 'from_user_url', 'content']},
+
+	NotificationsSendToFollowers: {
+		url: 'notifications/send_followers',
+		method: 'POST',
+		required: ['from_user_url', 'content']},
 };
+
+}());
