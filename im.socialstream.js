@@ -197,7 +197,7 @@ IMStream.methods.userHandler = function() {
 
 IMStream.methods.checkUser = function() {
 	if (Echo.UserSession.is('logged')) {
-		var url = "http://api.ideamelt.com/v1/user/create/"
+		var url = "https://api.ideamelt.com/v1/user/create/"
 		var pic = Echo.UserSession.get('photos');
 		var options = {
 		   api_key: this.config.get("imAppkey"),
@@ -231,16 +231,15 @@ IMStream.methods.getNewsfeed = function() {
 	if(this.config.get('personalizeUrl')) var identity = this.config.get('personalizeUrl');
 	else var identity = Echo.UserSession.get('identityUrl');
 	var opts = {api_key: key, user_url: identity};
-	var url = 'http://api.ideamelt.com/v1/user/followees/';
+	var url = 'https://api.ideamelt.com/v1/user/followees/';
 	$.getJSON(url, opts, function(result) {
 		if (!result.success) {
 			var users = [identity];
 		}
 		else {
 			var users = $.map(result.followees_list, function(r) {return r.url});
-			users.push(identity);
 		}
-		self.config.set('userUrls', users);
+		self.set('newsfeedUrls', users);
 		self.render();
 	});
 };
@@ -260,11 +259,18 @@ IMStream.methods.getQuery = function() {
 	var pulseSource = this.config.get('pulseSource', namespace);
 
 	var users = this.config.get('userUrls');
-	var userString = '';
+	var userString = 'user.id:';
 	if (users) {
 		var re = $.map(users, function(e) {return '"' + e + '"'});
 		userString = 'user.id:' + re.join(',');
 	};
+
+	if(this.config.get('personalize')) {
+		var newsfeedUrls = this.get('newsfeedUrls');
+		var rf = $.map(newsfeedUrls, function(e) {return '"' + e + '"'});
+		if (userString.length > 8) userString +=  ', ';
+		userString += rf.join(',');
+	}
 
 	var initialQuery = '(childrenof:' + storiesUrl + ' ' + userString + ') OR (childrenof:' + pulseUrl + ' source:' + pulseSource + ' ' + userString + ')';
 
@@ -338,7 +344,9 @@ IMStream.renderers.imstream = function(element) {
 					"xhtml": ["hashtags", "urls"]
 				}
 			},
-			"liveUpdates":{"enabled": true, "timeout": timeout}
+			"liveUpdates":{"enabled": true, "timeout": timeout},
+			"flashColor": "#C6E9F6",
+			"useSecureAPI": true
 		}
 	});
 

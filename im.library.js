@@ -1,10 +1,8 @@
-(function() {
-
 var IdeaMelt = window.IdeaMelt || {};
 
 IdeaMelt.init = function(config) {
 	if (!config || !config.api_key) return false;
-	this.config = config;
+	IdeaMelt.config = config;
 	return true;
 };
 
@@ -160,14 +158,12 @@ IdeaMelt.EndPoints = {
 		required: ['user_url', 'object_url']},
 
 	NotificationsSend: {
-		url: 'notifications/send',
+		url: 'notifications/send/',
 		method: 'POST',
 		required: ['to_user_url', 'from_user_url', 'content']},
 
 	NotificationsSendToFollowers: {
-		url: 'notifications/send_followers',
+		url: 'notifications/send_followers/',
 		method: 'POST',
 		required: ['from_user_url', 'content']},
 };
-
-}());
