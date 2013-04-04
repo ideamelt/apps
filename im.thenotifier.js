@@ -40,7 +40,8 @@ IMNotify.config = {
 	baseDomain: undefined,
 	liveUpdatesInterval: 5,
 	fadeToggleTimeout: 200,
-	userUrl: false
+	userUrl: false,
+	useSecureAPI: false
 };
 
 IMNotify.vars = {
@@ -171,7 +172,7 @@ IMNotify.methods.checkStreamCount = function() {
             "recurring": true,
             "onError": $.proxy(this._error, this),
             "onData": $.proxy(this.updateStreamCount, this),
-            "useSecureAPI": true
+            "secure": this.config.get('useSecureAPI')
         });
         this.set("request", request);
     }
@@ -252,7 +253,7 @@ IMNotify.renderers.stream = function(element) {
 			},
 			"liveUpdates":{"enabled": true, "timeout": timeout},
 			"flashColor": "#C6E9F6",
-			"useSecureAPI": true
+			"useSecureAPI": this.config.get("useSecureAPI")
 		}
 	});
 	return element;

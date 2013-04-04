@@ -27,15 +27,12 @@ IMStream.init = function() {
 
 
 IMStream.dependencies = [{
-	"loaded": function() {
-		return Echo.Control.isDefined("Echo.StreamServer.Controls.Stream");
-	},
-	"url": "{sdk}/streamserver.pack.js"
+	"url": "{config:cdnBaseURL.sdk}/streamserver.pack.js"
 }];
 
 IMStream.config = {
 	debug: false,
-	liveUpdatesInterval: 15,
+	liveUpdatesInterval: 5,
 	itemsPerPage: 20,
 	imAppkey: undefined,
 	baseDomain: undefined,
@@ -43,11 +40,12 @@ IMStream.config = {
 	sortOrder: 'reverseChronological',
 	symbolLink: 'http://www.nasdaq.com/symbol/[xxx]/stream',
 	metaLayout: 'compact',
-	userUrls: null,
+	userUrls: false,
 	aggregator: true,
 	compact: false,
 	personalize: true,
-	personalizeUrl: false
+	personalizeUrl: false,
+	useSecureAPI: false
 };
  
 IMStream.templates.imStream = '<div class="{class:imstream}"></div>';
@@ -222,6 +220,7 @@ IMStream.methods.getElement = function(className, name) {
 
 IMStream.methods.getNewsfeed = function() {
 	if (!Echo.UserSession.is('logged') && !this.config.get('personalizeUrl')) {
+		this.ready();
 		this.render();
 		return false;
 	}
@@ -231,17 +230,25 @@ IMStream.methods.getNewsfeed = function() {
 	if(this.config.get('personalizeUrl')) var identity = this.config.get('personalizeUrl');
 	else var identity = Echo.UserSession.get('identityUrl');
 	var opts = {api_key: key, user_url: identity};
-	var url = 'https://api.ideamelt.com/v1/user/followees/';
-	$.getJSON(url, opts, function(result) {
-		if (!result.success) {
-			var users = [identity];
+	var url = 'https://api.ideamelt.com/v1/user/';
+	(new Echo.API.Request({
+		"apiBaseURL": url,
+		"endpoint": "followees",
+		"transport": "json",
+		"secure": this.config.get('useSecureAPI'),
+		"data": opts,
+		"onData": function(result) {
+			if (!result.success) {
+				var users = [identity];
+			}
+			else {
+				var users = $.map(result.followees_list, function(r) {return r.url});
+			}
+			self.set('newsfeedUrls', users);
+			self.ready();
+			self.render();
 		}
-		else {
-			var users = $.map(result.followees_list, function(r) {return r.url});
-		}
-		self.set('newsfeedUrls', users);
-		self.render();
-	});
+	})).request();
 };
 
 IMStream.methods.template = function() {
@@ -265,7 +272,7 @@ IMStream.methods.getQuery = function() {
 		userString = 'user.id:' + re.join(',');
 	};
 
-	if(this.config.get('personalize')) {
+	if(this.config.get('personalize') && this.user.is('logged')) {
 		var newsfeedUrls = this.get('newsfeedUrls');
 		var rf = $.map(newsfeedUrls, function(e) {return '"' + e + '"'});
 		if (userString.length > 8) userString +=  ', ';
@@ -346,7 +353,7 @@ IMStream.renderers.imstream = function(element) {
 			},
 			"liveUpdates":{"enabled": true, "timeout": timeout},
 			"flashColor": "#C6E9F6",
-			"useSecureAPI": true
+			"useSecureAPI": this.config.get('useSecureAPI')
 		}
 	});
 
@@ -400,12 +407,15 @@ plugin.methods.imObject = function(graph,desc_threshold) {
 	var text_class = this.cssPrefix + 'text';
 	var title_class = this.cssPrefix + 'title';
 	var metaurl_class = this.cssPrefix + 'metaurl';
-	var text_frame_class = this.cssPrefix + 'item-text-frame';
+	if(graph.action['action-slug'] == 'comment') var text_frame_class = this.cssPrefix + 'item-comment-frame';
+	else var text_frame_class = this.cssPrefix + 'item-text-frame';
 
 	var size = this.config.get('metaLayout') === 'compact' ? 48 : 90;
 	var object_url = graph.meta.url;
   	var object_base_domain = object_url.replace('http://','').replace('https://','').replace('www.','').split('/')[0];
-  	var desc = graph.meta.description;
+  	if(graph.action['action-slug'] == 'comment') var desc = '"' + graph.meta.comment + '"';
+  	else var desc = graph.meta.description;
+
   	if (!desc) {desc = ''};
 	if (!desc_threshold) {desc_threshold = 300};
 	if (desc.length > desc_threshold) {desc = desc.slice(0,desc_threshold) + '...'};
@@ -555,6 +565,7 @@ plugin.css =
 	'.{plugin.class:wrapper}.im-compact-meta .{plugin.class:imgholder} img{width:48px;}' +
 	'.{plugin.class:wrapper}.im-compact-meta .{plugin.class:text}{ padding-top: 0px;margin-left: 60px;}' + 
 	'.{plugin.class:item-text-frame} {color:#666; font-size:11px}' + 
+	'.{plugin.class:item-comment-frame} {font-style: italic;}' + 
 	'.im-multiple{cursor:default}' + 
 	'.{plugin.class:im-object} {padding-bottom:20px}' + 
 	'.{plugin.class:im-object}:last-child {padding-bottom:0px}';

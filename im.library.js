@@ -167,3 +167,52 @@ IdeaMelt.EndPoints = {
 		method: 'POST',
 		required: ['from_user_url', 'content']},
 };
+
+
+
+
+
+
+
+
+IdeaMelt.Listen = {}
+
+IdeaMelt.Listen.rtbComments = function(app, objectType, objectUrl) {
+
+	app.components.Submit.events.subscribe({
+		"topic": "Echo.StreamServer.Controls.Submit.onPostComplete",
+		"handler": function(topic, data) {
+			var commentData = data.postData.content[0].object.content;
+			var options = {
+				user_url: Echo.UserSession.get('identityUrl'),
+				action_type: 'comment',
+				object_type: objectType,
+				object_url: objectUrl,
+				comment: commentData
+			}
+			IdeaMelt.send('StoryCreate', options)
+		}
+	});
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
