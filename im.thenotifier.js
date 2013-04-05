@@ -8,6 +8,16 @@ var IMNotify = Echo.App.manifest("IdeaMelt.Apps.TheNotifier");
 if (Echo.App.isDefined("IdeaMelt.Apps.TheNotifier")) return;
 
 IMNotify.init = function() {
+	if (!this.config.get('appkey')) {
+		this.log({type: 'error', message: 'appkey not provided'});
+		this.render();
+		return false;
+	}
+	if (!this.config.get('target')) {
+		this.log({type: 'error', message: 'target not provided'});
+		this.render();
+		return false;
+	}
 	if (!this.config.get('imAppkey')) {
 		this.log({type: 'error', message: 'imAppkey not provided'});
 		this.render();
@@ -19,20 +29,19 @@ IMNotify.init = function() {
 		return false;
 	}
 	if (this.config.get('debug')) this.log({message: 'app initialized'});
-	this.userHandler();
-	this.render();
-	this.ready();
+	
+	this.userHandler();	
 	this.domEvents();
+	this.ready();
+	this.render();
 };
 
 
 
 IMNotify.dependencies = [{
-	"loaded": function() {
-		return Echo.Control.isDefined("Echo.StreamServer.Controls.Stream");
-	},
-	"url": "{sdk}/streamserver.pack.js"
+	"url": "{config:cdnBaseURL.sdk}/streamserver.pack.js"
 }];
+
 
 IMNotify.config = {
 	debug: false,
@@ -40,7 +49,6 @@ IMNotify.config = {
 	baseDomain: undefined,
 	liveUpdatesInterval: 5,
 	fadeToggleTimeout: 200,
-	userUrl: false,
 	useSecureAPI: false
 };
 
@@ -48,7 +56,6 @@ IMNotify.vars = {
 	last_read_count_local: false,
 	last_read_count_server: false,
 	stream_count: undefined,
-	user_url: undefined
 }
 
 IMNotify.templates.LoggedIn =
@@ -80,19 +87,15 @@ IMNotify.methods.userHandler = function() {
 		this.set('last_read_count_server', 0);
 		this.set('stream_count', 0);
 
-		if(this.config.get('userUrl')) this.set('user_url', this.config.get('userUrl'));
-		else this.set('user_url', this.user.get('identityUrl'));
 		var base_domain = this.config.get('baseDomain');
 		if (base_domain.substring(base_domain.length-1,base_domain.length) === '/') {
 			base_domain = base_domain.substring(0,base_domain.length-1);
 		};
 
-		var stream_url = base_domain + '/im-notifications/' + this.get('user_url');
+		var stream_url = base_domain + '/im-notifications/' + this.user.get('identityUrl');
 		this.config.set('stream_url', stream_url);
 
 		this.checkUser();
-		this.checkLastReadCount();
-		this.checkStreamCount();
 
 	} else {
 		if (this.config.get('debug')) this.log({message: 'not-logged'});
@@ -113,7 +116,7 @@ IMNotify.methods.sendRequest = function(endpoint, method, data, callback) {
 	$.ajax({
 		type: method,
 		url: url,
-		dataType: 'jsonp',
+		dataType: 'json',
 		data: payload,
 		cache: false,
 		success: function(r) {
@@ -131,14 +134,17 @@ IMNotify.methods.checkUser = function() {
 	var self = this;
 	var endpoint = '/user/create/';
 	var data = {
-		user_url: this.get('user_url'),
+		user_url: this.user.get('identityUrl'),
 		title: this.user.get('name'),
 		avatar: this.user.get('avatar')
 	};
 	var callback = function(r) {
 		if (self.config.get('debug')) self.log({message: 'checkUser - successful'});
+		self.checkLastReadCount();
+		self.checkStreamCount();
+		self.view.render({name: 'stream'});
 	}
-	this.sendRequest(endpoint, 'GET', data, callback);	
+	this.sendRequest(endpoint, 'POST', data, callback);	
 };		
 
 IMNotify.methods.checkLastReadCount = function() {
@@ -146,7 +152,7 @@ IMNotify.methods.checkLastReadCount = function() {
 	var self = this;
 	var endpoint = '/notifications/count/';
 	var data = {
-		user_url: this.get('user_url')
+		user_url: this.user.get('identityUrl')
 	};
 	var callback = function(r) {
 		if (self.config.get('debug')) self.log({message: 'checkLastReadCount - successful'});
@@ -159,7 +165,7 @@ IMNotify.methods.checkLastReadCount = function() {
 
 IMNotify.methods.checkStreamCount = function() {
 	if (this.config.get('debug')) this.log({message: 'checkStreamCount - executing'});
-	var stream_url = this.config.get('baseDomain') + '/im-notifications/' + this.get('user_url');
+	var stream_url = this.config.get('baseDomain') + '/im-notifications/' + this.user.get('identityUrl');
 	var request = this.get("request");
     if (!request) {
         request = Echo.StreamServer.API.request({
@@ -198,7 +204,7 @@ IMNotify.methods.updateLastReadOnServer = function() {
 	var self = this;
 	var endpoint = '/notifications/count/';
 	var data = {
-		user_url: this.get('user_url'),
+		user_url: this.user.get('identityUrl'),
 		count: this.get('last_read_count_local'),
 		update: true
 	}
@@ -206,7 +212,7 @@ IMNotify.methods.updateLastReadOnServer = function() {
 		if (self.config.get('debug')) self.log({message: 'updateLastReadOnServer - successful'});
 	}
 	if (this.get('last_read_count_server') != this.get('last_read_count_local')) {
-		this.sendRequest(endpoint, 'GET', data, callback);
+		this.sendRequest(endpoint, 'POST', data, callback);
 	};
 	return;
 };
@@ -227,7 +233,7 @@ IMNotify.methods.domEvents = function() {
 
 IMNotify.renderers.stream = function(element) {
 	if (this.config.get('debug')) this.log({message: 'stream renderer - executing'});
-	var user_url = this.get('user_url');
+	var user_url = this.user.get('identityUrl');
 	var base_domain = this.config.get('baseDomain');
 	var stream_url = base_domain + '/im-notifications/' + user_url;
 	var timeout = this.config.get('liveUpdatesInterval');
