@@ -45,7 +45,8 @@ IMStream.config = {
 	compact: false,
 	personalize: true,
 	personalizeUrl: false,
-	useSecureAPI: false
+	useSecureAPI: false,
+	filter: false
 };
  
 IMStream.templates.imStream = '<div class="{class:imstream}"></div>';

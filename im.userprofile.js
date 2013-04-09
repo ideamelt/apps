@@ -24,11 +24,15 @@
 
 	var UserProfile = {};
 
-	UserProfile.config = {
+	UserProfile.config = {};
+
+	UserProfile.baseConfig = {
 		targets: {
 			stream: false,
 			title: false,
 			avatar: false,
+			followees: false,
+			followers: false
 		},
 		appkey: false,
 		imAppkey: false,
@@ -36,8 +40,9 @@
 		namespace: false,
 		userUrl: false,
 		liveUpdates: true,
-		liveUpdatesInterval: 10,
-		debug: false
+		liveUpdatesInterval: 300,
+		debug: false,
+		emptyTargets: true
 	};
 
 	UserProfile.init = function(config) {
@@ -48,7 +53,7 @@
 		if(!config.baseDomain) return this.log('error', 'baseDomain not provided');
 		if(!config.namespace) return this.log('error', 'namespace not provided');
 		
-		this.config = config;
+		this.config = $.extend(this.baseConfig, config);
 
 		IdeaMelt.init({api_key:this.config.imAppkey});
 		if(this.config.userUrl) this.getUser();
@@ -84,10 +89,11 @@
 		};
 		var success = function(response) {
 			self.user = response.user;
+			if(self.config.emptyTargets) self.emptyTargets();
 			self.initComponents();
 		};
 		var fail = function(response) {
-			$.each(reponse.message_list, function(index, item) {
+			$.each(response.message_list, function(index, item) {
 				return self.log('error', item);
 			});
 		};
@@ -98,6 +104,15 @@
 		if(this.config.targets.stream) this.userStreamConstructor();
 		if(this.config.targets.avatar) this.userAvatar();
 		if(this.config.targets.title) this.userTitle();
+		if(this.config.targets.followers) new this.Friends('followers', this.config.targets.followers, 'UserFollowers', this.user, this.config.liveUpdates, this.config.liveUpdatesInterval);
+		if(this.config.targets.followees) new this.Friends('followees', this.config.targets.followees, 'UserFollowees', this.user, this.config.liveUpdates, this.config.liveUpdatesInterval);
+	}
+
+	UserProfile.emptyTargets = function() {
+		var targets = this.config.targets;
+		$.each(targets, function(key, value) {
+			$(value).empty();
+		});
 	}
 
 	UserProfile.userStreamConstructor = function() {
@@ -136,6 +151,49 @@
 			.addClass('im-up-title')
 			.text(this.user.title)
 			.appendTo(this.config.targets.title);
+	}
+
+	UserProfile.Friends = function(name, target, endpoint, user, liveUpdates, liveUpdatesInterval) {
+		this.instance = name;
+		this.div = target;
+		this.endpoint = endpoint;
+		this.user = user;
+		var self = this;
+		if(liveUpdates) this.interval = window.setInterval(function() {self.getData();}, liveUpdatesInterval*1000);
+		this.getData();
+	}
+
+	UserProfile.Friends.prototype.getData = function() {
+		var self = this;
+		var options = {
+			user_url: this.user.url
+		}
+		var success = function(response) {
+			var list = self.instance + '_list';
+			self.assembleHtml(response[list]);
+		}
+		IdeaMelt.send(self.endpoint, options, success);
+	}
+
+	UserProfile.Friends.prototype.assembleHtml = function(data) {
+		var temp = [];
+		$.each(data, function(index, item) {
+			if(UserProfile.config.debug) console.log(item);
+			var	el = $('<a>').attr('class', 'im-up-fi').attr('href', item.url),
+				title = $('<div>').attr('class', 'im-up-fi-title').text(item.title),
+				imgBox = $('<div>').attr('class', 'im-up-fi-img'),
+				img = $('<img>').attr('src', item.avatar),
+				h = img[0].naturalHeight,
+				w = img[0].naturalWidth;
+			if (h >= w) img.addClass('im-up-avatar-h');
+			else img.addClass('im-up-avatar-w');
+			img.appendTo(imgBox);
+			
+			imgBox.appendTo(el);
+			title.appendTo(el);
+			temp.push(el);
+		})
+		$(this.div).empty().append(temp);
 	}
 
 	// UserProfile.UserFollow = function(target) {
@@ -186,45 +244,9 @@
 	// 	IdeaMelt.send('UserFollow', options, success);
 	// }
 
-	// UserProfile.Friends = function(name, target, endpoint) {
-	// 	this.instance = name;
-	// 	this.targetElem = target;
-	// 	this.endpoint = endpoint;
-	// 	this.getData();
-	// 	var self = this;
-	// 	if(this.interval == undefined && UserProfile.config.liveUpdates) this.interval = window.setInterval(function() {self.getData()}, UserProfile.config.liveUpdatesInterval*1000);
-	// }
-
-	// UserProfile.Friends.prototype.getData = function() {
-	// 	var self = this;
-	// 	var options = {
-	// 		user_url: UserProfile.user.url
-	// 	}
-	// 	var success = function(response) {
-	// 		var list = self.instance + '_list';
-	// 		self.assembleHtml(response[list]);
-	// 	}
-	// 	IdeaMelt.send(self.endpoint, options, success);
-	// }
-
-	// UserProfile.Friends.prototype.assembleHtml = function(data) {
-	// 	var length = data.length;
-	// 	var container = $('<div>').addClass('ideamelt-userprofile-friendcontainer').addClass('ideamelt-userprofile-' + this.instance);
-	// 	$.each(data, function(index, item) {
-	// 		if(UserProfile.config.debug) console.log(item);
-	// 		var el = $('<a>').data(item).attr('class', 'ideamelt-userprofile-frienditem').attr('href', item.url);
-	// 		var img = $('<img>').attr('class', 'ideamelt-userprofile-friendavatar').attr('src', item.avatar);
-	// 		var title = $('<div>').attr('class', 'ideamelt-userprofile-friendtitle').attr('src', item.avatar);
-	// 		img.appendTo(el);
-	// 		title.appendTo(el);
-	// 		el.appendTo(container);
-	// 	})
-	// 	this.targetElem.find('.ideamelt-userprofile-friendcontainer').remove();
-	// 	this.targetElem.append(container);
-	// }
-
 	UserProfile.css('.im-up-avatar-w {max-height: 100%; min-height: 100%; vertical-align: middle; border: 0; -ms-interpolation-mode: bicubic;}');
 	UserProfile.css('.im-up-avatar-h {max-width: 100%; min-width: 100%; vertical-align: middle; border: 0; -ms-interpolation-mode: bicubic;}');
+	UserProfile.css('.im-up-fi-img {width: 58px; height: 58px; overflow: hidden;}');
 
 	var IdeaMelt = window.IdeaMelt || {};
 	IdeaMelt.Apps = window.IdeaMelt.Apps || {};
