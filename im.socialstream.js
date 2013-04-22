@@ -1,4 +1,4 @@
-(function(jQuery) {
+﻿(function(jQuery) {
 "use strict";
 
 var $ = jQuery;
@@ -46,7 +46,8 @@ IMStream.config = {
 	personalize: true,
 	personalizeUrl: false,
 	useSecureAPI: false,
-	filter: false
+	autoLikeNotifs: false,
+	autoReplyNotifs: false
 };
  
 IMStream.templates.imStream = '<div class="{class:imstream}"></div>';
@@ -235,7 +236,7 @@ IMStream.methods.getNewsfeed = function() {
 	(new Echo.API.Request({
 		"apiBaseURL": url,
 		"endpoint": "followees",
-		"transport": "json",
+		"transport": "jsonp",
 		"secure": this.config.get('useSecureAPI'),
 		"data": opts,
 		"onData": function(result) {
@@ -267,7 +268,9 @@ IMStream.methods.getQuery = function() {
 	var pulseSource = this.config.get('pulseSource', namespace);
 
 	var users = this.config.get('userUrls');
+	
 	var userString = 'user.id:';
+	
 	if (users) {
 		var re = $.map(users, function(e) {return '"' + e + '"'});
 		userString = 'user.id:' + re.join(',');
@@ -295,6 +298,62 @@ IMStream.methods.getQuery = function() {
 	var query = initialQuery + ' itemsPerPage:' + itemsPerPage + ' sortOrder:' + sortOrder + ' ' + gen;
 	return query; 
 };
+
+IMStream.methods.autoLikeNotifs = function() {
+	var self = this;
+	this.events.subscribe({
+		"topic": "Echo.StreamServer.Controls.Stream.Item.Plugins.Like.onLikeComplete",
+		"handler": function(topic, data) {
+			var options = {
+				api_key: self.config.get('imAppkey'),
+				to_user_url: data.item.data.actor.id,
+				from_user_url: self.user.get('identityUrl'),
+			}
+			if (data.item.data.object.title == undefined) {
+				options['content'] = '<a href="' + self.user.get("identityUrl") + '">' + self.user.get('name') + '</a> liked your post<br><i>' + data.item.data.object.content + '</i>';
+			}
+			else {
+				var tmp = $(data.item.data.object.content).data('graph');
+				options['content'] = '<a href="' + self.user.get("identityUrl") + '">' + self.user.get('name') + '</a> liked your activity<br><i><a href="' + tmp.meta.url + '">' + data.item.data.object.title + '</a></i>';
+			}
+			self.sendNotif(options);
+		},
+	});
+}
+
+IMStream.methods.autoReplyNotifs = function() {
+	var self = this;
+	this.events.subscribe({
+		"topic": "Echo.StreamServer.Controls.Submit.onPostComplete",
+		"handler": function(topic, data) {
+			var options = {
+				api_key: self.config.get('imAppkey'),
+				to_user_url: data.inReplyTo.actor.id,
+				from_user_url: self.user.get('identityUrl')
+			};
+			if (data.inReplyTo.object.title == undefined) {
+				options['content'] = '<a href="' + self.user.get("identityUrl") + '">' + self.user.get('name') + '</a> replied to your post<br><i>' + data.inReplyTo.object.content + '</a></i><br><b>"' + data.postData.content[0].object.content + '"</b>';
+			}
+			else {
+				var tmp = $(data.inReplyTo.object.content).data('graph');
+				options['content'] = '<a href="' + self.user.get("identityUrl") + '">' + self.user.get('name') + '</a> replied to your activity<br><i><a href="' + tmp.meta.url + '">' + data.inReplyTo.object.title + '</a></i><br><b>"' + data.postData.content[0].object.content + '"</b>';
+			}
+			self.sendNotif(options);
+		},
+	});
+}
+
+IMStream.methods.sendNotif = function(options) {
+	var self = this;
+	var url = 'https://api.ideamelt.com/v1/notifications/';
+	(new Echo.API.Request({
+		"apiBaseURL": url,
+		"endpoint": "send",
+		"transport": "jsonp",
+		"secure": self.config.get('useSecureAPI'),
+		"data": options
+	})).request();
+}
 
 IMStream.renderers.imstream = function(element) {
 	var timeout = this.config.get('liveUpdatesInterval');
@@ -336,8 +395,10 @@ IMStream.renderers.imstream = function(element) {
                 "nestedPlugins": [{
 					"name": "FormAuth",
 					"submitPermissions": "forceLogin"
-					}]
-				}],
+					},
+					{"name": "PostButtonTypeChange"}
+				]
+			}],
 			"state": {
 				"label": {
 					"icon": false,
@@ -357,6 +418,9 @@ IMStream.renderers.imstream = function(element) {
 			"useSecureAPI": this.config.get('useSecureAPI')
 		}
 	});
+
+	if(this.config.get('autoLikeNotifs')) this.autoLikeNotifs();
+	if(this.config.get('autoReplyNotifs')) this.autoReplyNotifs();
 
 	return element;
 };
@@ -408,15 +472,12 @@ plugin.methods.imObject = function(graph,desc_threshold) {
 	var text_class = this.cssPrefix + 'text';
 	var title_class = this.cssPrefix + 'title';
 	var metaurl_class = this.cssPrefix + 'metaurl';
-	if(graph.action['action-slug'] == 'comment') var text_frame_class = this.cssPrefix + 'item-comment-frame';
-	else var text_frame_class = this.cssPrefix + 'item-text-frame';
+	var text_frame_class = this.cssPrefix + 'item-text-frame';
 
 	var size = this.config.get('metaLayout') === 'compact' ? 48 : 90;
 	var object_url = graph.meta.url;
   	var object_base_domain = object_url.replace('http://','').replace('https://','').replace('www.','').split('/')[0];
-  	if(graph.action['action-slug'] == 'comment') var desc = '"' + graph.meta.comment + '"';
-  	else var desc = graph.meta.description;
-
+  	var desc = graph.meta.description;
   	if (!desc) {desc = ''};
 	if (!desc_threshold) {desc_threshold = 300};
 	if (desc.length > desc_threshold) {desc = desc.slice(0,desc_threshold) + '...'};
@@ -566,7 +627,6 @@ plugin.css =
 	'.{plugin.class:wrapper}.im-compact-meta .{plugin.class:imgholder} img{width:48px;}' +
 	'.{plugin.class:wrapper}.im-compact-meta .{plugin.class:text}{ padding-top: 0px;margin-left: 60px;}' + 
 	'.{plugin.class:item-text-frame} {color:#666; font-size:11px}' + 
-	'.{plugin.class:item-comment-frame} {font-style: italic;}' + 
 	'.im-multiple{cursor:default}' + 
 	'.{plugin.class:im-object} {padding-bottom:20px}' + 
 	'.{plugin.class:im-object}:last-child {padding-bottom:0px}';
