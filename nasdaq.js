@@ -137,7 +137,10 @@ Echo.Loader.download([
 				"sharing": {"enabled": true},
 				"auth": {"loginButton": false},
 				"pageLike": {"enabled": false},
-				"ready": function() {comments = this;},
+				"ready": function() {
+					comments = this;
+					IdeaMelt.EventHooks.rtbComments(comments, true, true);
+				},
 				"plugins": {
 					"formAuth": [],
 					"reply": [{"name": "PostButtonTypeChange"}],
@@ -156,8 +159,6 @@ Echo.Loader.download([
 				}
 			}
 		});
-
-		IdeaMelt.EventHooks.rtbComments(comments, true, true);
 	}
 });
 });
@@ -235,7 +236,10 @@ Echo.Loader.download([
 				"sharing": {"enabled": true},
 				"auth": {"loginButton": false},
 				"pageLike": {"enabled": false},
-				"ready": function() {comments = this;},
+				"ready": function() {
+					comments = this;
+					IdeaMelt.EventHooks.rtbComments(comments, true, true);
+				},
 				"plugins": {
 					"formAuth": [],
 					"reply": [{"name": "PostButtonTypeChange"}],
@@ -254,8 +258,6 @@ Echo.Loader.download([
 				}
 			}
 		});
-
-		IdeaMelt.EventHooks.rtbComments(comments, true, true);
 	}
 });
 });
