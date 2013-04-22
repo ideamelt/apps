@@ -134,20 +134,21 @@ Echo.Loader.download([
 				"streamQuery": 'childrenof:'+document.location.href+' -user.state:ModeratorBanned -state:SystemFlagged,ModeratorFlagged,ModeratorDeleted,ModeratorBanned -source:Twitter sortOrder:reverseChronological itemsPerPage:15 safeHTML:permissive children:1 -state:SystemFlagged,ModeratorFlagged,ModeratorDeleted,ModeratorBanned -source:Twitter',
 				"target": document.getElementById('articlecomments'),
 				"appkey": 'echo.realtidbits.commenting.nasdaq.prod',
-				"sharing": {"enabled": true},
-				"auth": {"loginButton": false},
-				"pageLike": {"enabled": false},
 				"ready": function() {
 					comments = this;
 					IdeaMelt.EventHooks.rtbComments(comments, true, true);
 				},
-				"plugins": {
-					"formAuth": [],
-					"reply": [{"name": "PostButtonTypeChange"}],
-					"stream": [],
-					"submit": [{"name": "PostButtonTypeChange"}]
-				},
 				"settings": {
+					"plugins": {
+						"formAuth": [],
+						"reply": [{"name": "PostButtonTypeChange"}],
+						"stream": [],
+						"submit": [{"name": "PostButtonTypeChange"}]
+					},
+					"sharing": {"enabled": true},
+					"auth": {"loginButton": false},
+					"pageLike": {"enabled": false},
+					"emailSubscribe": {"enabled": false},
 					"tabs": {
 						"social": false,
 						"community": false
@@ -233,20 +234,21 @@ Echo.Loader.download([
 				"streamQuery": 'childrenof:'+document.location.href+' -user.state:ModeratorBanned -state:SystemFlagged,ModeratorFlagged,ModeratorDeleted,ModeratorBanned -source:Twitter sortOrder:reverseChronological itemsPerPage:15 safeHTML:permissive children:1 -state:SystemFlagged,ModeratorFlagged,ModeratorDeleted,ModeratorBanned -source:Twitter',
 				"target": document.getElementById('articlecomments'),
 				"appkey": 'echo.realtidbits.commenting.nasdaq.prod',
-				"sharing": {"enabled": true},
-				"auth": {"loginButton": false},
-				"pageLike": {"enabled": false},
 				"ready": function() {
 					comments = this;
 					IdeaMelt.EventHooks.rtbComments(comments, true, true);
 				},
-				"plugins": {
-					"formAuth": [],
-					"reply": [{"name": "PostButtonTypeChange"}],
-					"stream": [],
-					"submit": [{"name": "PostButtonTypeChange"}]
-				},
 				"settings": {
+					"plugins": {
+						"formAuth": [],
+						"reply": [{"name": "PostButtonTypeChange"}],
+						"stream": [],
+						"submit": [{"name": "PostButtonTypeChange"}]
+					},
+					"sharing": {"enabled": true},
+					"auth": {"loginButton": false},
+					"pageLike": {"enabled": false},
+					"emailSubscribe": {"enabled": false},
 					"tabs": {
 						"social": false,
 						"community": false
