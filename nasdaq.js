@@ -197,6 +197,18 @@ Echo.Loader.download([
         };
     }
 
+    Echo.Events.subscribe({
+	    "topic": "Echo.UserSession.onInit",
+	    "handler": function(topic, data) {
+	    	if(Echo.UserSession.data.identities.length != 0) { 
+	    		// USER IS ALREADY LOGGED IN!
+	    	}
+	    	else if (Echo.UserSession.data.identities.length == 0) { 
+	    		// USER IS NOT LOGGED IN!
+	    	}
+	    }
+	})
+
     // init UserSession via HTTPS
     Echo.UserSession({
         "appkey": "echo.ideamelt.notifier.nasdaq.prod",
