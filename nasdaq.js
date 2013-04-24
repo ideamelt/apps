@@ -8,7 +8,8 @@ Echo.Loader.initEnvironment(function() {
 Echo.Loader.download([
 		{'url': 'http://ideamelt.com/static/dev/im.library.js'},
 		{'url': 'http://community-qc.nasdaq.com/common/templates/backplane-channel.ashx'},
-		{'url': 'http://ideamelt.com/static/apps/nasdaq/im.library.js'}
+		{'url': 'http://ideamelt.com/static/apps/nasdaq/im.library.js'},
+		{'url': 'http://ideamelt.com/static/apps/nasdaq/postbutton.plugin.js'},
 	], function() {
 
 	$.get(Backplane.getChannelID(), {}, function (data) {
@@ -38,30 +39,12 @@ Echo.Loader.download([
 	    	}
 	    }
 	});
-    
+
     // init UserSession via HTTPS
     Echo.UserSession({
         "appkey": "echo.ideamelt.notifier.nasdaq.prod",
         "useSecureAPI": true
     });
-
-    (function(jQuery) {
-		"use strict";
-
-		var $ = jQuery;
-
-		var plugin = Echo.Plugin.manifest("PostButtonTypeChange", "Echo.StreamServer.Controls.Submit");
-
-		if (Echo.Plugin.isDefined(plugin)) return;
-
-		plugin.init = function() {
-			this.extendTemplate("replace", "postButton",
-				'<div class="{class:postButton} btn echo-primaryFont"></div>');
-		};
-
-		Echo.Plugin.create(plugin);
-
-	})(Echo.jQuery);
 
 	IdeaMelt.init({api_key: 'dev.nasdaq'});
 
@@ -150,12 +133,20 @@ Echo.Loader.download([
 					comments = this;
 					IdeaMelt.EventHooks.rtbComments(comments, true, true);
 				},
+				"components": {
+					"Submit": {
+						"plugins": [{
+							"name": "PostButtonTypeChange",
+							"url": "http://ideamelt.com/static/apps/nasdaq/postbutton.plugin.js"
+						}]
+					}
+				},
 				"settings": {
 					"plugins": {
-						"formAuth": [],
-						"reply": [{"name": "PostButtonTypeChange"}],
-						"stream": [],
-						"submit": [{"name": "PostButtonTypeChange"}]
+						"reply": [{
+							"name": "PostButtonTypeChange",
+							"url": "http://ideamelt.com/static/apps/nasdaq/postbutton.plugin.js"
+						}]
 					},
 					"sharing": {"enabled": true},
 					"auth": {"loginButton": false},
@@ -190,7 +181,8 @@ Echo.Loader.initEnvironment(function() {
 Echo.Loader.download([
 		{'url': 'http://community-qc.nasdaq.com/common/scripts/jquery.cookie.js'},
 		{'url': 'http://community-qc.nasdaq.com/common/templates/backplane-channel.ashx'},
-		{'url': 'http://ideamelt.com/static/apps/nasdaq/im.library.js'}
+		{'url': 'http://ideamelt.com/static/apps/nasdaq/im.library.js'},
+		{'url': 'http://ideamelt.com/static/apps/nasdaq/postbutton.plugin.js'},
 	], function() {
 
 	$.get(Backplane.getChannelID(), {}, function (data) {
@@ -227,24 +219,6 @@ Echo.Loader.download([
         "useSecureAPI": true
     });
 
-    (function(jQuery) {
-		"use strict";
-
-		var $ = jQuery;
-
-		var plugin = Echo.Plugin.manifest("PostButtonTypeChange", "Echo.StreamServer.Controls.Submit");
-
-		if (Echo.Plugin.isDefined(plugin)) return;
-
-		plugin.init = function() {
-			this.extendTemplate("replace", "postButton",
-				'<div class="{class:postButton} btn echo-primaryFont"></div>');
-		};
-
-		Echo.Plugin.create(plugin);
-
-	})(Echo.jQuery);
-
 	IdeaMelt.init({api_key: 'dev.nasdaq'});
 
     // now init all IdeaMelt apps		
@@ -262,12 +236,20 @@ Echo.Loader.download([
 					comments = this;
 					IdeaMelt.EventHooks.rtbComments(comments, true, true);
 				},
+				"components": {
+					"Submit": {
+						"plugins": [{
+							"name": "PostButtonTypeChange",
+							"url": "http://ideamelt.com/static/apps/nasdaq/postbutton.plugin.js"
+						}]
+					}
+				},
 				"settings": {
 					"plugins": {
-						"formAuth": [],
-						"reply": [{"name": "PostButtonTypeChange"}],
-						"stream": [],
-						"submit": [{"name": "PostButtonTypeChange"}]
+						"reply": [{
+							"name": "PostButtonTypeChange",
+							"url": "http://ideamelt.com/static/apps/nasdaq/postbutton.plugin.js"
+						}]
 					},
 					"sharing": {"enabled": true},
 					"auth": {"loginButton": false},
