@@ -6,7 +6,7 @@ $(document).ready(function() {
 Echo.Loader.initEnvironment(function() {
 
 Echo.Loader.download([
-		{'url': 'http://ideamelt.com/static/dev/im.library.js'},
+		{'url': 'http://community-qc.nasdaq.com/common/scripts/jquery.cookie.js'},
 		{'url': 'http://community-qc.nasdaq.com/common/templates/backplane-channel.ashx'},
 		{'url': 'http://ideamelt.com/static/apps/nasdaq/im.library.js'},
 		{'url': 'http://ideamelt.com/static/apps/nasdaq/postbutton.plugin.js'},
