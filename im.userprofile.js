@@ -85,7 +85,7 @@
 	UserProfile.getUser = function() {
 		var self = this;
 		var options = {
-			user_url: this.config.userUrl,
+			user_url: this.config.userUrl
 		};
 		var success = function(response) {
 			self.user = response.user;
@@ -98,6 +98,11 @@
 			});
 		};
 		IdeaMelt.send('UserExists', options, success, fail);
+	}
+
+	UserProfile.changeUser = function(url) {
+		this.config.userUrl = url;
+		this.getUser();
 	}
 
 	UserProfile.initComponents = function() {
@@ -117,24 +122,31 @@
 
 	UserProfile.userStreamConstructor = function() {
 		var self = this;
-		Echo.Loader.initApplication({
-			'script': 'http://ideamelt.com/static/apps/3.0/im.socialstream.js',
-			'component': 'IdeaMelt.Apps.SocialStream',
-			'config': {
-				"target": this.config.targets.stream,
-				"appkey": this.config.appkey,
-				"imAppkey": this.config.imAppkey,
-				"namespace": this.config.namespace,
-				"baseDomain": this.config.baseDomain,
-				"personalize": false,
-				"userUrls": [this.config.userUrl],
-				"aggregator": false,
-				"compact" : false,
-				'ready': function() {
-					self.userStream = this;
+		if (this.userStream != undefined) {
+			this.userStream.config.set('userUrls', [this.config.userUrl]);
+			this.userStream.config.set('target', this.config.targets.stream);
+			this.userStream.refresh();
+		}
+		else {
+			Echo.Loader.initApplication({
+				'script': 'http://ideamelt.com/static/apps/3.0/im.socialstream.js',
+				'component': 'IdeaMelt.Apps.SocialStream',
+				'config': {
+					"target": this.config.targets.stream,
+					"appkey": this.config.appkey,
+					"imAppkey": this.config.imAppkey,
+					"namespace": this.config.namespace,
+					"baseDomain": this.config.baseDomain,
+					"personalize": false,
+					"userUrls": [this.config.userUrl],
+					"aggregator": false,
+					"compact" : false,
+					'ready': function() {
+						self.userStream = this;
+					}
 				}
-			}
-		});
+			});
+		}
 	}
 
 	UserProfile.userAvatar = function() {
@@ -178,7 +190,6 @@
 	UserProfile.Friends.prototype.assembleHtml = function(data) {
 		var temp = [];
 		$.each(data, function(index, item) {
-			if(UserProfile.config.debug) console.log(item);
 			var	el = $('<a>').attr('class', 'im-up-fi').attr('href', item.url),
 				title = $('<div>').attr('class', 'im-up-fi-title').text(item.title),
 				imgBox = $('<div>').attr('class', 'im-up-fi-img'),

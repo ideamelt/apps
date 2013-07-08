@@ -1,4 +1,4 @@
-﻿(function(jQuery) {
+(function(jQuery) {
 "use strict";
 
 var $ = jQuery;
@@ -10,6 +10,27 @@ if (Echo.App.isDefined("IdeaMelt.Apps.SocialStream")) return;
 IMStream.init = function() {
 	if (!this.config.get('imAppkey') || !this.config.get('baseDomain') || !this.config.get('namespace')) return;
 	if (this.config.get('debug')) this.log({message: 'stream app initialized'});
+
+	if (this.config.get('app') == "newsfeed") {
+		this.config.set('aggregator', true);
+		this.config.set('personalize', true);
+	}
+
+	else if (this.config.get('app') == "userfeed") {
+		this.config.set('aggregator', true);
+		this.config.set('personalize', false);
+		if(this.config.get('userUrls') == undefined || this.config.get('userUrls')[0] == undefined || this.config.get('userUrls').length > 1) {
+			this.log({message: 'user url required'});
+			return false;
+		}
+	}
+
+	else if (this.config.get('app') == "siteticker") {
+		this.config.set('aggregator', false);
+		this.config.set('personalize', false);
+		this.config.set('compact', true);
+	}
+
 	this.setQueryUrls();
 
 	if (this.config.get('aggregator')) {this.aggregator()};
@@ -31,12 +52,17 @@ IMStream.dependencies = [{
 }];
 
 IMStream.config = {
-	debug: false,
-	liveUpdatesInterval: 5,
-	itemsPerPage: 20,
+	app: undefined,
+
 	imAppkey: undefined,
 	baseDomain: undefined,
 	namespace: undefined,
+	appkey: undefined,
+
+	debug: false,
+
+	liveUpdatesInterval: 5,
+	itemsPerPage: 20,
 	sortOrder: 'reverseChronological',
 	symbolLink: 'http://www.nasdaq.com/symbol/[xxx]/stream',
 	metaLayout: 'compact',
@@ -46,6 +72,7 @@ IMStream.config = {
 	personalize: true,
 	personalizeUrl: false,
 	useSecureAPI: false,
+	filter: false,
 	autoLikeNotifs: false,
 	autoReplyNotifs: false
 };
@@ -236,7 +263,7 @@ IMStream.methods.getNewsfeed = function() {
 	(new Echo.API.Request({
 		"apiBaseURL": url,
 		"endpoint": "followees",
-		"transport": "jsonp",
+		"transport": "json",
 		"secure": this.config.get('useSecureAPI'),
 		"data": opts,
 		"onData": function(result) {
@@ -269,29 +296,31 @@ IMStream.methods.getQuery = function() {
 
 	var users = this.config.get('userUrls');
 	
-	var userString = 'user.id:';
+	var userString = '';
 	
-	if (users) {
+	if (users instanceof Array && users.length > 0 && users[0].length > 0) {
 		var re = $.map(users, function(e) {return '"' + e + '"'});
-		userString = 'user.id:' + re.join(',');
+		userString += re.join(',');
 	};
 
 	if(this.config.get('personalize') && this.user.is('logged')) {
 		var newsfeedUrls = this.get('newsfeedUrls');
 		var rf = $.map(newsfeedUrls, function(e) {return '"' + e + '"'});
-		if (userString.length > 8) userString +=  ', ';
+		if (userString.length > 0 && newsfeedUrls.length > 0) userString +=  ', ';
 		userString += rf.join(',');
 	}
+	
+	if(userString.length > 0) userString = ' user.id:' + userString;
 
-	var initialQuery = '(childrenof:' + storiesUrl + ' ' + userString + ') OR (childrenof:' + pulseUrl + ' source:' + pulseSource + ' ' + userString + ')';
+	var initialQuery = '(childrenof:' + storiesUrl + userString + ') OR (childrenof:' + pulseUrl + ' source:' + pulseSource + userString + ')';
 
 	var filter = this.config.get('filter');
 	if (filter) {
 		filter = filter.toLowerCase();
 		if (filter === 'pulse') {
-			initialQuery = 'childrenof:' + pulseUrl + ' source:' + pulseSource + ' ' + userString;
+			initialQuery = 'childrenof:' + pulseUrl + ' source:' + pulseSource + userString;
 		} else if (filter === 'stories') {
-			initialQuery = 'childrenof:' + storiesUrl + ' ' + userString;
+			initialQuery = 'childrenof:' + storiesUrl + userString;
 		}
 	}
 
@@ -349,9 +378,11 @@ IMStream.methods.sendNotif = function(options) {
 	(new Echo.API.Request({
 		"apiBaseURL": url,
 		"endpoint": "send",
-		"transport": "jsonp",
 		"secure": self.config.get('useSecureAPI'),
-		"data": options
+		"data": options,
+		"onData": function(result) {
+			self.log({'message': result})
+		}
 	})).request();
 }
 
@@ -395,10 +426,8 @@ IMStream.renderers.imstream = function(element) {
                 "nestedPlugins": [{
 					"name": "FormAuth",
 					"submitPermissions": "forceLogin"
-					},
-					{"name": "PostButtonTypeChange"}
-				]
-			}],
+					}]
+				}],
 			"state": {
 				"label": {
 					"icon": false,
@@ -415,6 +444,7 @@ IMStream.renderers.imstream = function(element) {
 			},
 			"liveUpdates":{"enabled": true, "timeout": timeout},
 			"flashColor": "#C6E9F6",
+			"fadeTimeout": 6000,
 			"useSecureAPI": this.config.get('useSecureAPI')
 		}
 	});
@@ -472,12 +502,15 @@ plugin.methods.imObject = function(graph,desc_threshold) {
 	var text_class = this.cssPrefix + 'text';
 	var title_class = this.cssPrefix + 'title';
 	var metaurl_class = this.cssPrefix + 'metaurl';
-	var text_frame_class = this.cssPrefix + 'item-text-frame';
+	if(graph.action['action-slug'] == 'comment') var text_frame_class = this.cssPrefix + 'item-comment-frame';
+	else var text_frame_class = this.cssPrefix + 'item-text-frame';
 
 	var size = this.config.get('metaLayout') === 'compact' ? 48 : 90;
 	var object_url = graph.meta.url;
   	var object_base_domain = object_url.replace('http://','').replace('https://','').replace('www.','').split('/')[0];
-  	var desc = graph.meta.description;
+  	if(graph.action['action-slug'] == 'comment') var desc = '"' + graph.meta.comment + '"';
+  	else var desc = graph.meta.description;
+
   	if (!desc) {desc = ''};
 	if (!desc_threshold) {desc_threshold = 300};
 	if (desc.length > desc_threshold) {desc = desc.slice(0,desc_threshold) + '...'};
@@ -627,6 +660,7 @@ plugin.css =
 	'.{plugin.class:wrapper}.im-compact-meta .{plugin.class:imgholder} img{width:48px;}' +
 	'.{plugin.class:wrapper}.im-compact-meta .{plugin.class:text}{ padding-top: 0px;margin-left: 60px;}' + 
 	'.{plugin.class:item-text-frame} {color:#666; font-size:11px}' + 
+	'.{plugin.class:item-comment-frame} {font-style: italic;}' + 
 	'.im-multiple{cursor:default}' + 
 	'.{plugin.class:im-object} {padding-bottom:20px}' + 
 	'.{plugin.class:im-object}:last-child {padding-bottom:0px}';

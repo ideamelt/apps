@@ -221,14 +221,17 @@ IMNotify.methods.template = function() {
 	return this.templates["Logged" + (this.user.is("logged") ? "In" : "Out")];
 };
 
-IMNotify.methods.domEvents = function() {
+IMNotify.methods.domEvents = function(state) {
 	var self = this;
-	$('html').bind('click', function(e) {
-		if(!$(e.target).parents().hasClass(self.cssPrefix + 'notifyStreamFrame')) {
-		    if(self.view.get('notifyStreamFrame')) self.view.get('notifyStreamFrame').fadeOut(self.config.get('fadeToggleTimeout'));
-		    if(self.view.get('notifyButton')) self.view.get('notifyButton').removeClass(self.cssPrefix + 'notifyButtonSelected');
-		}
-	});
+	if(state == 'remove') $('html').off('click.notifier');
+	else {
+		$('html').on('click.notifier', function(e) {
+			if(!$(e.target).parents().hasClass(self.cssPrefix + 'notifyStreamFrame')) {
+			    if(self.view.get('notifyStreamFrame')) self.view.get('notifyStreamFrame').fadeOut(self.config.get('fadeToggleTimeout'));
+			    if(self.view.get('notifyButton')) self.view.get('notifyButton').removeClass(self.cssPrefix + 'notifyButtonSelected');
+			}
+		});
+	}
 };
 
 IMNotify.renderers.stream = function(element) {

@@ -2,6 +2,8 @@ var IdeaMelt = window.IdeaMelt || {};
 
 IdeaMelt.init = function(config) {
 	if (!config || !config.api_key) return false;
+	if (config.secure) IdeaMelt.baseUrl = 'https://api.ideamelt.com/v1/';
+	else IdeaMelt.baseUrl = 'http://api.ideamelt.com/v1/';
 	IdeaMelt.config = config;
 	return true;
 };
@@ -37,8 +39,6 @@ IdeaMelt.messageLog = {
 	'error' : []
 };
 
-IdeaMelt.baseUrl = 'http://api.ideamelt.com/v1/';
-
 IdeaMelt.log = function(type, message) {
 	this.messageLog[type].push(message);
 	console.log(message);
@@ -50,7 +50,7 @@ IdeaMelt.listEndPoints = function() {
 	$.each(this.EndPoints, function(i) {
 		endpoints.push(i);
 	});
-	this.log('info', endpoints);
+	return endpoints;
 }
 
 IdeaMelt.listEndPointParameters = function(endpoint) {
@@ -62,7 +62,7 @@ IdeaMelt.listEndPointParameters = function(endpoint) {
 		var optional = this.EndPoints[endpoint].optional;
 		message['optional'] = optional;
 	}
-	this.log('info', message)
+	return message;
 }
 
 IdeaMelt.checkRequest = function(endpoint, options) {
@@ -84,7 +84,7 @@ IdeaMelt.checkRequest = function(endpoint, options) {
 }
 
 IdeaMelt.send = function(endpoint, options, success, fail) {
-	if(!this.checkRequest(endpoint, options)) return false;
+	// if(!this.checkRequest(endpoint, options)) return false;
 	var base = {
 			crossDomain: true,
 			api_key: IdeaMelt.config.api_key
@@ -92,7 +92,7 @@ IdeaMelt.send = function(endpoint, options, success, fail) {
 		data = $.extend(base, options),
 		url = this.baseUrl + this.EndPoints[endpoint].url,
 		method = this.EndPoints[endpoint].method
-	return $.ajax({
+	$.ajax({
 		type: method,
 		url: url,
 		dataType: 'json',
@@ -111,6 +111,16 @@ IdeaMelt.send = function(endpoint, options, success, fail) {
 
 IdeaMelt.EndPoints = {
 	
+	StoryCreate: {
+		url: 'story/create/',
+		method: 'POST',
+		required: ['user_url', 'action_type', 'object_type', 'object_url']},
+
+	UserExists: {
+		url: 'user/exists/',
+		method: 'GET',
+		required: ['user_url']},
+
 	UserCreate: {
 		url: 'user/create/',
 		method: 'POST',
@@ -119,53 +129,67 @@ IdeaMelt.EndPoints = {
 	UserFollow: {
 		url: 'user/follow/',
 		method: 'POST',
-		required: ['follower_url'],
-		optional: ['followee_url', 'object_url']},
-	
-	StoryCreate: {
-		url: 'story/create/',
-		method: 'POST',
-		required: ['user_url', 'action_type', 'object_type', 'object_url']},
-	
-	UserExists: {
-		url: 'user/exists/',
-		method: 'GET',
-		required: ['user_url']},
+		required: ['user_url'],
+		optional: ['user_to_follow', 'object_to_follow']},
 	
 	UserFollowers: {
-		url: 'user/followers/',
+		url: 'user/user_followers/',
 		method: 'GET',
 		required: ['user_url']},
 	
-	UserFollowees: {
-		url: 'user/followees/',
+	UserFollowing: {
+		url: 'user/user_following/',
+		method: 'GET',
+		required: ['user_url']},
+
+	ObjectsFollowing: {
+		url: 'user/objects_following/',
 		method: 'GET',
 		required: ['user_url']},
 	
 	IsFollowingUser: {
 		url: 'user/is_following_user/',
 		method: 'GET',
-		required: ['user_url', 'followee_url']},
-	
-	ObjectsFollowed: {
-		url: 'user/objects_followed/',
-		method: 'GET',
-		required: ['user_url']},
+		required: ['user_url', 'following_user_url']},
 	
 	IsFollowingObject: {
 		url: 'user/is_following_object/',
 		method: 'GET',
-		required: ['user_url', 'object_url']},
+		required: ['user_url', 'following_object_url']},
 
+	NotifSend: {
+		url: 'notifications/send/',
+		method: 'POST',
+		required: ['to_user_url', 'from_user_url', 'content']},
+
+	NotifSendToFollowers: {
+		url: 'notifications/send_to_followers/',
+		method: 'POST',
+		required: ['from_user_url', 'content']},
+
+	//phasing out
 	NotificationsSend: {
 		url: 'notifications/send/',
 		method: 'POST',
 		required: ['to_user_url', 'from_user_url', 'content']},
 
+	//phasing out
 	NotificationsSendToFollowers: {
-		url: 'notifications/send_followers/',
+		url: 'notifications/send_to_followers/',
 		method: 'POST',
 		required: ['from_user_url', 'content']},
+
+	//phasing out
+	UserFollowees: {
+		url: 'user/followees/',
+		method: 'GET',
+		required: ['user_url']},
+
+	//phasing out
+	ObjectsFollowed: {
+		url: 'user/objects_followed/',
+		method: 'GET',
+		required: ['user_url']},
 };
 
 
@@ -175,44 +199,75 @@ IdeaMelt.EndPoints = {
 
 
 
-IdeaMelt.Listen = {}
+IdeaMelt.EventHooks = {
 
-IdeaMelt.Listen.rtbComments = function(app, objectType, objectUrl) {
 
-	app.components.Submit.events.subscribe({
-		"topic": "Echo.StreamServer.Controls.Submit.onPostComplete",
-		"handler": function(topic, data) {
-			var commentData = data.postData.content[0].object.content;
-			var options = {
-				user_url: Echo.UserSession.get('identityUrl'),
-				action_type: 'comment',
-				object_type: objectType,
-				object_url: objectUrl,
-				comment: commentData
+	RTBComments: {
+		notifications: function(app, autoPostNotif, autoLikeNotif, deepLink) {
+
+			if(app.events == undefined) return IdeaMelt.log('error', 'event subscription not possible. check app parameter');
+
+			if(autoPostNotif) {
+				app.events.subscribe({
+					"topic": "Echo.StreamServer.Controls.Submit.onPostComplete",
+					"handler": function(topic, data) {
+						if(Echo.UserSession.identity.loggedIn == "true") {
+							if(data.inReplyTo != undefined) {
+								var options = {
+									to_user_url: data.inReplyTo.actor.id,
+									from_user_url: Echo.UserSession.get('identityUrl')
+								};
+								if(deepLink != undefined) options['content'] = '<a href="' + Echo.UserSession.get("identityUrl") + '">' + Echo.UserSession.get('name') + '</a> replied to your post<br><i>' + data.inReplyTo.object.content + '</a></i><br><a href="' + deepLink + '"<b>"' + data.postData.content[0].object.content + '"</b></a>';
+								else options['content'] = '<a href="' + Echo.UserSession.get("identityUrl") + '">' + Echo.UserSession.get('name') + '</a> replied to your post<br><i>' + data.inReplyTo.object.content + '</a></i><br><b>"' + data.postData.content[0].object.content + '"</b>';
+								IdeaMelt.send('NotificationsSend', options);
+							}
+						}
+					}
+				});
 			}
-			IdeaMelt.send('StoryCreate', options)
+
+			if(autoLikeNotif) {
+				app.events.subscribe({
+					"topic": "Echo.StreamServer.Controls.Stream.Item.Plugins.Like.onLikeComplete",
+					"handler": function(topic, data) {
+						if(Echo.UserSession.identity.loggedIn == "true") {
+							var options = {
+								to_user_url: data.item.data.actor.id,
+								from_user_url: Echo.UserSession.get('identityUrl'),
+							}
+							if(deepLink != undefined) options['content'] = '<a href="' + Echo.UserSession.get("identityUrl") + '">' + Echo.UserSession.get('name') + '</a> liked your post<br><a href="' + deepLink + '"<i>' + data.item.data.object.content + '</i></a>';
+							else options['content'] = '<a href="' + Echo.UserSession.get("identityUrl") + '">' + Echo.UserSession.get('name') + '</a> liked your post<br><i>' + data.item.data.object.content + '</i>';
+							IdeaMelt.send('NotificationsSend', options);
+						}
+					}
+				});
+			}
+		},
+
+		stories: function(app, objectType, objectUrl) {
+
+			if(app.events == undefined) return IdeaMelt.log('error', 'event subscription not possible. check app parameter');
+			if(objectType == undefined) return IdeaMelt.log('error', 'no objectType provided');
+			if(objectUrl == undefined) return IdeaMelt.log('error', 'no objectUrl provided');
+
+			app.events.subscribe({
+				"topic": "Echo.StreamServer.Controls.Submit.onPostComplete",
+				"handler": function(topic, data) {
+					if(Echo.UserSession.identity.loggedIn == "true") {
+						var commentData = data.postData.content[0].object.content;
+						var options = {
+							user_url: Echo.UserSession.get('identityUrl'),
+							action_type: 'comment',
+							object_type: objectType,
+							object_url: objectUrl,
+							comment: commentData
+						}
+						IdeaMelt.send('StoryCreate', options)
+					}
+				}
+			});
 		}
-	});
+	}
+
+	
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
